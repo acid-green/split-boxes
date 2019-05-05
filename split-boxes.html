@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Frame Template</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+const BORDER_SIZE = 15;
+ 
+function onSashHorizontalResize(hShash) {
+  var frame= hShash.parentElement
+  var hTop= frame.firstElementChild
+  var hBottom = frame.lastElementChild
+  var oldPos = 0, newPos = 0;
+  
+  hShash.onmousedown = function(e) {
+    e = e || window.event;
+    e.preventDefault();    
+    oldPos = e.clientY;
+    
+    document.onmousemove = function(e) {
+        e = e || window.event;
+        e.preventDefault();
+        // calculate the new cursor position:
+        newPos = oldPos - e.clientY;
+        hShashTop = hShash.offsetTop - newPos
+        //Limit shash movement to +-25px inside the frame
+        if(hShashTop + 25 > frame.offsetHeight)
+            return;
+        if(hShashTop - 25 < 0)
+            return;
+        oldPos = e.clientY;
+        // set the element's new position:
+        hShash.style.top = hShashTop + "px";
+        
+        hTop.style.bottom = (frame.offsetHeight - hShashTop - 3)+ "px";
+        hBottom.style.top = (hShashTop + 7)+ "px";           
+    };
+    document.onmouseup =  function(e) {
+        /* stop moving when mouse button is released:*/
+        document.onmouseup = null;
+        document.onmousemove = null;
+    };
+  }
+};
+ 
+function onSashVerticalResize(vShash) {
+  var frame= vShash.parentElement
+  var vLeft= frame.firstElementChild
+  var vRight = frame.lastElementChild
+  var oldPos = 0, newPos = 0;
+  
+  vShash.onmousedown = function(e) {
+    e = e || window.event;
+    e.preventDefault();    
+    oldPos = e.clientX;
+    
+    document.onmousemove = function(e) {
+        e = e || window.event;
+        e.preventDefault();
+        // calculate the new cursor position:
+        newPos = oldPos - e.clientX;
+        vShashLeft = vShash.offsetLeft - newPos
+        //Limit shash movement to +-25px inside the frame
+        if(vShashLeft + 25 > frame.offsetWidth)
+            return;
+        if(vShashLeft - 25 < 0)
+            return;
+        oldPos = e.clientX;
+        // set the element's new position:
+        vShash.style.left = vShashLeft + "px";
+        
+        vLeft.style.right = (frame.offsetWidth - vShashLeft - 3)+ "px";
+        vRight.style.left = (vShashLeft + 7)+ "px";    
+    };
+    document.onmouseup =  function(e) {
+        /* stop moving when mouse button is released:*/
+        document.onmouseup = null;
+        document.onmousemove = null;
+    };
+  }
+}
+ 
+function addFrame(e){
+    var container = document.querySelector("#container");
+    container.removeChild(container.lastElementChild);
+    
+    var template = document.querySelector('#frame-full');
+    var clone = document.importNode(template.content, true);    
+    container.appendChild(clone);
+    
+    var frame = container.lastElementChild;    
+    onFrameDrag(frame);
+        
+    var template2 = document.querySelector('#frame-new');
+    var clone2 = document.importNode(template2.content, true);
+    container.appendChild(clone2);
+}
+ 
+function onFrameDrag(frame) {
+  var oldPosX = 0, oldPosY = 0;
+    frame.onmousedown = function(e) {
+    
+    //allow resize of splitted divs
+    if (e.target.className=="vShash" || e.target.className=="hShash")
+        return;
+    
+    //allow resize of frame
+	// in Chrome the event is on the sibling. Get the offset relative to the parentElement
+	if ( (e.offsetX + e.target.offsetLeft) > frame.offsetWidth - BORDER_SIZE) {
+        return;
+    }
+    
+    e = e || window.event;
+    //no need to prevent default as it disable the editable elements
+    //e.preventDefault();
+    
+    oldPosX = e.clientX;
+    oldPosY = e.clientY;
+    
+    oldOffsetLeft = frame.offsetLeft;
+    oldOffsetTop =  frame.offsetTop;
+        
+    document.onmousemove = function(e) {
+        e = e || window.event;    
+        e.preventDefault();        
+        
+        // calculate the new frame position:
+        frame.style.left = (e.clientX - oldPosX ) +'px';
+        frame.style.top = (e.clientY - oldPosY) +'px';
+    };
+    document.onmouseup =  function(e){
+        /* stop moving when mouse button is released:*/
+        document.onmouseup = null;
+        document.onmousemove = null;
+       
+        var diffOffetLeft = frame.offsetLeft - oldOffsetLeft;
+        var diffOffetTop = frame.offsetTop - oldOffsetTop;
+        var frameNewDelete = container.lastElementChild;
+        
+        //delete frame
+        if ( frame.offsetLeft > frameNewDelete.offsetLeft && frame.offsetLeft < (frameNewDelete.offsetLeft + frameNewDelete.offsetWidth )
+            && frame.offsetTop > frameNewDelete.offsetTop && frame.offsetTop < (frameNewDelete.offsetTop + frameNewDelete.offsetHeight) )
+        {
+            container.removeChild(frame);
+        }
+        else
+        {
+            //reposition on it's place (although the condition is more to save CPU)
+            if (diffOffetLeft>=-75 && diffOffetLeft<=75 && diffOffetTop>=-75 && diffOffetTop<=75){
+                frame.style.left = 0 +'px';
+                frame.style.top = 0 +'px';
+            }
+            //reposition to a new place
+            else
+            {
+                doPosition(frame);
+            }
+        }
+    };
+  }
+}
+ 
+function doPosition(frame)
+{
+    var container = document.querySelector("#container");
+    var siblings = container.children
+    var repositioned = false;
+ 
+    // find out which frame is the current Frame over :)
+    for (i = 0; i < siblings.length-1; i++)
+    {
+        var frameLeft = frame.offsetLeft;
+        var frameTop = frame.offsetTop < 0 ? 5 : frame.offsetTop;
+        
+        // Insert after - default
+        if ( frameLeft > siblings[i].offsetLeft && frameLeft < (siblings[i].offsetLeft + siblings[i].offsetWidth )
+            && frameTop > siblings[i].offsetTop && frameTop < (siblings[i].offsetTop + siblings[i].offsetHeight) )
+        {
+            var insertedNode = container.insertBefore(frame, siblings[i+1]);
+            insertedNode.style.left = 0 +'px';
+            insertedNode.style.top = 0 +'px';
+            repositioned = true;
+            break;
+        }
+        
+        // Insert before first element - when the frame is dragged too much to the left
+        if ( frame.offsetLeft < 0 
+            && frameTop > siblings[i].offsetTop && frameTop < (siblings[i].offsetTop + siblings[i].offsetHeight))
+        {
+            var insertedNode = container.insertBefore(frame, siblings[i]);
+            insertedNode.style.left = 0 +'px';
+            insertedNode.style.top = 0 +'px';
+            repositioned = true;
+            break;
+        }
+    }
+    //Send the frame back
+    if (!repositioned){
+        frame.style.left = 0 +'px';
+        frame.style.top = 0 +'px';
+    }
+}
+ 
+function addSashVertical(elem){
+    var frame = elem.parentElement;    
+    var template = document.querySelector('#frame-vertical');
+    frame.innerHTML = template.innerHTML;
+    onSashVerticalResize(frame.querySelector('.vShash'));    
+}
+ 
+function addSashHorizontal(elem){
+    var frame = elem.parentElement;    
+    var template = document.querySelector('#frame-horizontal');
+    frame.innerHTML = template.innerHTML;
+    onSashHorizontalResize(frame.querySelector('.hShash'));
+}
+
+
+function saveStructure(){
+    var container = document.querySelector("#container");
+    var siblings = container.children;
+    
+    var frameList = [];
+    
+    for (i = 0; i < siblings.length-1; i++)
+    {
+        var frameObj = new FrameToJson( siblings[i].offsetLeft, siblings[i].offsetTop,
+            siblings[i].offsetWidth, siblings[i].offsetHeight);
+        
+        let frameSiblings = siblings[i].querySelectorAll('.frameSibling');
+        if (frameSiblings.length === 2 ){
+            let sibling1 = new FrameToJson( frameSiblings[0].offsetLeft,  frameSiblings[0].offsetTop,
+              frameSiblings[0].offsetWidth,  frameSiblings[0].offsetHeight);
+            frameObj.addSibling(sibling1);
+            
+            let sibling2 = new FrameToJson( frameSiblings[1].offsetLeft,  frameSiblings[1].offsetTop,
+              frameSiblings[1].offsetWidth,  frameSiblings[1].offsetHeight);
+            frameObj.addSibling(sibling2);
+        }
+        
+        frameList.push(frameObj);
+    }
+    
+    console.log(JSON.stringify(frameList));
+}
+ 
+class FrameToJson {
+ 
+  constructor(top, left, width, height) {
+    this.top = top;
+    this.left = left;
+    this.height = height;
+    this.width = width;
+    this.siblings = [];
+  }
+  
+  addSibling(sibling){    
+    this.siblings.push(sibling);
+  }
+}
+
+</script>
+<style>
+* {
+  box-sizing: border-box;
+}
+ 
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+ 
+div#container{
+    position:relative
+}
+ 
+div.frame {
+  float: left;
+  padding: 20px;  
+  border: solid 2px lightgray;
+  margin: 2px;
+  min-width: 200px;
+  min-height: 200px;
+  position: relative;    
+}
+ 
+div.frame.resizable {
+  resize: both;
+  overflow: auto;
+}
+ 
+div.frame.new {
+    border: dotted 2px lightgray;
+    postion:absolute;    
+}
+ 
+div.frameSibling {
+    border: solid 1px cyan;
+    position:absolute;
+	/*pointer-events: none;*/
+}
+ 
+div.hTop{    
+    top:0px;
+    left:0px;
+    right:0px;    
+    bottom:calc(50% + 6px);
+}
+div.hBottom{    
+    bottom:0px;
+    left:0px;
+    right:0px;    
+    top:calc(50% + 6px);
+    
+}
+div.hShash{
+    cursor: row-resize;
+    border: solid 1px lightgray;
+    position:absolute;
+    top:calc(50% - 3px);
+    z-index:1;
+    height:4px;
+    left:0px;
+    right:0px;
+}
+div.vLeft{
+    top:0px;
+    left:0px;
+    bottom:0px;    
+    right:calc(50% + 6px);
+}
+div.vRight{
+    bottom:0px;
+    top:0px;
+    right:0px;    
+    left:calc(50% + 6px);   
+}
+div.vShash{
+    cursor: col-resize;
+    border: solid 1px lightgray;
+    position:absolute;
+    left:calc(50% - 3px);
+    z-index:1;
+    width:4px;
+    top:0px;
+    bottom:0px;
+}
+ 
+ 
+/* Responsive layout - makes the two columns/boxes stack on top of each other instead of next to each other, on small screens */
+@media (max-width: 600px) {
+  nav, article {
+    width: 100%;
+    height: auto;
+  }
+}
+</style>
+</head>
+<body>
+ 
+<div id="container">    
+    <div class="frame new">
+        <input type="button" id="addFrame" value="Add Frame" onclick="addFrame(this)">
+        <input type="button" id="deleteFrame" value="Drag over this frame to delete" >
+    </div>
+</div>
+ 
+<template id="frame-new">
+    <div class="frame new">
+        <input type="button" id="addFrame" value="Add Frame" onclick="addFrame(this)">
+        <input type="button" id="deleteFrame" value="Drag over this frame to delete">
+        <br>
+        <br>
+        <input type="button" id="saveStructure" value="Save Structure" onclick="saveStructure()">
+    </div>    
+</template>
+ 
+<template id="frame-full">
+    <div class="frame resizable" >
+        <input type="button" id="addSashVertical" value="Add Vertical Split" onclick="addSashVertical(this)">
+        <br>
+        <input type="button" id="addSashHorizontal" value="Add Horizontal Split" onclick="addSashHorizontal(this)">
+    </div>
+</template>
+ 
+<template id="frame-vertical">
+    <div class="frameSibling vLeft" contenteditable="true">
+        Left
+    </div>
+    <div class="vShash"></div>
+    <div class="frameSibling vRight" contenteditable="true">
+        Right
+    </div>
+</template>
+ 
+<template id="frame-horizontal">
+    <div class="frameSibling hTop" contenteditable="true">        
+        Top
+    </div>
+    <div class="hShash"></div>
+    <div class="frameSibling hBottom" contenteditable="true">
+        Down
+    </div>
+</template>
+
+</body>
+</html>
